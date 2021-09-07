@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./lib/bootstrap.min.css">
+    <title>My Chat App</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+
+</head>
+
+<body>
+    <div class="firstSceen">
+        <div>
+            <p>Welcom To My Chat App</p>
+            <form name="myForm">
+                <input type="text" class="group_name" placeholder="Type Group Name..." required />
+                <input type="text" class="userName" placeholder="Type Your Name..." required />
+                <input type="button" class="btnJoin" onclick="validateForm()" value="Join Group" />
+            </form>
+        </div>
+    </div>
+    <div class="wrapper">
+        <div class="menu">
+            <p class="group_count">Group Name : online users()<b></b></p>
+            <button type="button" class="btnout" onclick="logoutUser(this)">Logout</button>
+        </div>
+        <div class="chatbox d-flex flex-column p-2 rounded-3 mt-2">
+        </div>
+        <div class="message">
+            <input type="text" class="usermsg" />
+            <button type="button" class="submitmsg" onclick="sendMessage(this)">Send</button>
+        </div>
+        <span id="div_timer"></span>
+
+
+    </div>
+    <script>
+        Pusher.logToConsole = true;
+        const pusher = new Pusher('9e02f66b8b4e65d159e0', {
+            cluster: 'us2',
+            encrypted: true,
+            authEndpoint: 'pusher/auth'
+        });
+
+        // fetch post request function
+        const postData = (url = "", data) => {
+            return fetch(url, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+        };
+
+
+        // listen for joining groups and binding sending messages to this group
+        const listen = (creatMessage, data) => {
+            const channel = pusher.subscribe(`presence-${data.groupName}`);
+            channel.bind("message_sent", ({
+                username,
+                message
+            }) => {
+                creatMessage(message, username);
+            });
+        };
+        const sendPusherRequest = (creatMessage, data) => {
+            postData("join-chat", {
+                username: document.querySelector(".userName").value,
+            }).then((res) => {
+                const channel = pusher.subscribe(`presence-${data.groupName}`);
+
+                // User joins chat
+                channel.bind("pusher:member_added", (member) => {
+                    console.log(`${data.username} joined the chat`);
+                });
+
+                // User leave chat
+                channel.bind("pusher:member_removed", (member) => {
+                    console.log(`${data.username} leaved the chat`);
+                });
+
+                // Listen for chat messages
+                listen(creatMessage, data);
+            });
+        };
+
+        const sendPusherMessage = (url, message) => {
+            postData(url, message);
+        };
+    </script>
+    <script src="app.js"></script>
+</body>
+
+</html>
